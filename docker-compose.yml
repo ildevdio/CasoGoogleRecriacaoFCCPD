@@ -1,0 +1,44 @@
+# Miniatura do incidente Google Cloud de 12/06/2025 (Service Control + Spanner).
+# MITIGATION=none (padrao) reproduz a falha; MITIGATION=jitter aplica backoff com jitter.
+# RUN_DIR define onde os logs brutos sao gravados (o run.sh ja configura).
+x-build: &build
+  build: .
+  volumes:
+    - ./${RUN_DIR:-logs/manual}:/logs
+
+services:
+  policy-db:            # = tabelas regionais do Spanner com politicas de cota
+    <<: *build
+    command: python db.py
+    environment:
+      DB_CAPACITY: ${DB_CAPACITY:-10}
+      DB_COST_MS: ${DB_COST_MS:-80}
+      DB_QUEUE_TIMEOUT_S: ${DB_QUEUE_TIMEOUT_S:-2}
+    networks: [backend]
+
+  service-control:      # = binario Service Control (100 tarefas em threads)
+    <<: *build
+    command: python service_control.py
+    depends_on: [policy-db]
+    environment:
+      MITIGATION: ${MITIGATION:-none}
+      N_TASKS: ${N_TASKS:-100}
+      WARMUP_READS: ${WARMUP_READS:-5}
+      DB_URL: http://policy-db:8000
+    networks: [backend, frontend]
+
+  client:               # = trafego de API de clientes + operador (injeta politica / red-button)
+    <<: *build
+    command: python client.py
+    depends_on: [service-control]
+    environment:
+      POISON_AT_S: ${POISON_AT_S:-20}
+      REDBUTTON_AT_S: ${REDBUTTON_AT_S:-35}
+      MAX_S: ${MAX_S:-240}
+      SC_URL: http://service-control:8080
+      DB_URL: http://policy-db:8000
+    networks: [backend, frontend]
+
+networks:
+  backend: {}    # service-control <-> policy-db (plano de controle)
+  frontend: {}   # client <-> service-control (requisicoes de API)
