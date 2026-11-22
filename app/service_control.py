@@ -15,6 +15,8 @@ LOG = os.getenv("LOG_FILE", "/logs/sc.log")
 
 ready = [False] * N
 ready_lock = threading.Lock()
+crash_count = [0] * N
+crash_lock = threading.Lock()
 red = {"on": False}
 red_lock = threading.Lock()
 
@@ -49,6 +51,27 @@ def count_ready():
         return sum(ready)
 
 
+def list_ready():
+    with ready_lock:
+        return [i for i, v in enumerate(ready) if v]
+
+
+def inc_crash(i):
+    with crash_lock:
+        crash_count[i] += 1
+        return crash_count[i]
+
+
+def get_crash(i):
+    with crash_lock:
+        return crash_count[i]
+
+
+def reset_crash(i):
+    with crash_lock:
+        crash_count[i] = 0
+
+
 class NullPointer(Exception):
     pass
 
@@ -63,6 +86,14 @@ def backoff(attempt):
         time.sleep(random.uniform(0, min(CAPB, BASE * 2 ** attempt)))
     else:
         time.sleep(0.01)
+
+
+def restart_delay(i):
+    """Backoff exponencial por tarefa no reinicio apos crash."""
+    c = get_crash(i)
+    if MIT == "jitter":
+        return random.uniform(0, min(CAPB, RESTART * (2 ** c)))
+    return min(CAPB, RESTART * (2 ** c))
 
 
 def task(i):
@@ -81,6 +112,7 @@ def task(i):
                 except Exception:
                     attempt += 1
                     backoff(attempt)
+            reset_crash(i)
             set_ready(i, True)
             log(f"event=task_ready task={i}")
             while True:
@@ -93,8 +125,9 @@ def task(i):
                     pass
         except NullPointer:
             set_ready(i, False)
-            log(f"event=task_crash task={i}")
-            delay = random.uniform(0, RESTART * 2) if MIT == "jitter" else RESTART
+            c = inc_crash(i)
+            log(f"event=task_crash task={i} crashes={c}")
+            delay = restart_delay(i)
             time.sleep(delay)
 
 
@@ -124,9 +157,11 @@ class H(BaseHTTPRequestHandler):
         if self.path == "/ready":
             return self._send(200 if count_ready() >= N else 503, {"ready": count_ready()})
         if self.path == "/api":
-            if count_ready() > 0:
-                return self._send(200, {"ok": True})
-            return self._send(503, {"error": "no ready task"})
+            r = list_ready()
+            if not r:
+                return self._send(503, {"error": "no ready task"})
+            chosen = random.choice(r)
+            return self._send(200, {"ok": True, "task": chosen})
         self._send(404, {})
 
     def do_POST(self):

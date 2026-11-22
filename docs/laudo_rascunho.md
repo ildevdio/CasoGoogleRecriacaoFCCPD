@@ -52,6 +52,6 @@ Preencher com `logs/*/metrics.txt` (3 execuções por modo; indicar o arquivo de
 **Surpresa:** descrevam algo que *vocês* observaram de diferente do esperado e a explicação.
 
 ## Parte D — Parecer
-- Pode acontecer no nosso projeto? Arquivo/trecho: `____` (indique arquivo e linhas reais).
-- Mitigação implementada: backoff exponencial com jitter (`MITIGATION=jitter`).
-- Antes/depois (de `logs/none_run*` e `logs/jitter_run*`): ____
+- Pode acontecer no nosso projeto? Sim. Arquivo/trecho: `app/service_control.py` (linhas 126-129 da versão original): o endpoint `/api` respondia `200` enquanto `count_ready() > 0`, ou seja, bastava **uma** tarefa de 100 viva para todo o sistema parecer saudável, mascarando a perda de capacidade. Além disso, o reinício após crash usava `random.uniform(0, RESTART * 2)` sem backoff exponencial real, mantendo as tarefas sincronizadas — o mesmo efeito manada do incidente do Google Cloud.
+- Mitigação implementada: backoff exponencial com jitter por tarefa no reinício (`MITIGATION=jitter`) e `/api` sorteia uma tarefa pronta por requisição, refletindo a perda real de capacidade.
+- Antes/depois (de `logs/none_run*` e `logs/jitter_run*`): preencher com as medianas de `metrics.txt` após rodar 3x cada modo.

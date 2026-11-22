@@ -14,8 +14,10 @@ Ao aplicar o red-button (desligamento do caminho de código defeituoso), todas a
 
 ## Requisitos
 
-- Docker + Docker Compose v2
+- Docker Desktop com Docker Compose v2
 - Python 3 (apenas para `analyze.py`, sem dependências externas)
+
+No Windows, use o Git Bash ou WSL para rodar os scripts shell (`.sh`). O comando Python dentro dos containers é `python3`; no host Windows pode ser `python` ou `py`.
 
 ---
 
