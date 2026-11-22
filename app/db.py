@@ -1,8 +1,3 @@
-"""policy-db: representa a tabela regional do Spanner que o Service Control le.
-Capacidade limitada (DB_CAPACITY leituras simultaneas, DB_COST_MS cada).
-Quem espera mais que DB_QUEUE_TIMEOUT_S recebe 503. O servidor NAO sabe se o
-cliente ja desistiu, entao trabalho de requisicoes abandonadas ainda e executado
-(isso e o que torna o retry sem backoff tao danoso)."""
 import json, os, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -43,7 +38,7 @@ class H(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b)
         except (BrokenPipeError, ConnectionResetError):
-            pass  # cliente ja desistiu; o trabalho ja foi gasto
+            pass
 
     def do_GET(self):
         if self.path == "/health":

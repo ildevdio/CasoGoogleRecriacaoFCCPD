@@ -1,7 +1,3 @@
-"""client: gerador de carga (RATE req/s em GET /api) + roteiro do experimento.
-t=POISON_AT: injeta politica com campo em branco no policy-db.
-t=REDBUTTON_AT: aciona o red-button no service-control.
-Termina quando houver STABLE_S segundos sem erro apos o red-button, ou em MAX_S."""
 import os, threading, time, urllib.request, urllib.error
 
 SC = os.getenv("SC_URL", "http://service-control:8080")
@@ -14,15 +10,16 @@ STABLE = float(os.getenv("STABLE_S", "20"))
 MAX_S = float(os.getenv("MAX_S", "240"))
 OUT = os.getenv("OUT_DIR", "/logs")
 
-rows, lk = [], threading.Lock()
+rows = []
+lk = threading.Lock()
 last_err = {"t": 0.0}
 stop = threading.Event()
 
 
-def wait(url):
+def wait(url, timeout=1):
     while True:
         try:
-            urllib.request.urlopen(url + "/health", timeout=1)
+            urllib.request.urlopen(url + "/health", timeout=timeout)
             return
         except Exception:
             time.sleep(0.5)
@@ -42,7 +39,7 @@ def worker():
         except urllib.error.HTTPError as e:
             code = e.code
         except Exception:
-            code = 0  # timeout / conexao recusada
+            code = 0
         lat = (time.time() - t) * 1000
         with lk:
             rows.append((t, code, lat))
@@ -63,31 +60,48 @@ def flush(ev):
 
 
 if __name__ == "__main__":
-    wait(SC); wait(DB)
-    while True:  # espera todas as tarefas ficarem prontas (estado estavel)
+    wait(SC)
+    wait(DB)
+
+    while True:
         try:
-            urllib.request.urlopen(SC + "/ready", timeout=1); break
+            urllib.request.urlopen(SC + "/ready", timeout=1)
+            break
         except Exception:
             time.sleep(0.5)
+
     ev = {}
-    t0 = time.time(); ev["t0"] = t0
+    t0 = time.time()
+    ev["t0"] = t0
+
     for _ in range(WORKERS):
         threading.Thread(target=worker, daemon=True).start()
-    poisoned = red = False
+
+    poisoned = False
+    red = False
     while time.time() - t0 < MAX_S:
         time.sleep(0.25)
         el = time.time() - t0
+
         if not poisoned and el >= POISON_AT:
             post(DB + "/policy", b'{"version": 2, "quota": null}')
-            ev["poison_injected"] = time.time(); poisoned = True
+            ev["poison_injected"] = time.time()
+            poisoned = True
+
         if not red and el >= RED_AT:
             post(SC + "/redbutton")
-            ev["redbutton_pressed"] = time.time(); red = True
+            ev["redbutton_pressed"] = time.time()
+            red = True
+
         if red and time.time() - max(last_err["t"], ev["redbutton_pressed"]) >= STABLE:
-            ev["stable_reached"] = time.time(); break
+            ev["stable_reached"] = time.time()
+            break
+
         if int(el * 4) % 20 == 0:
             flush(ev)
-    stop.set(); time.sleep(0.5)
+
+    stop.set()
+    time.sleep(0.5)
     ev["end"] = time.time()
     flush(ev)
     print("client finished", ev)

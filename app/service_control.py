@@ -1,8 +1,3 @@
-"""service-control: N_TASKS tarefas que (1) carregam a politica do policy-db ao
-subir (WARMUP_READS leituras), (2) fazem polling periodico e (3) servem /api.
-Politica com campo em branco => 'null pointer' => a tarefa cai e e reiniciada
-(crash loop). POST /redbutton desliga o caminho de codigo defeituoso.
-MITIGATION=jitter => backoff exponencial com jitter nas leituras e no restart."""
 import json, os, random, threading, time, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -15,21 +10,18 @@ RESTART = float(os.getenv("RESTART_DELAY_S", "0.5"))
 RTO = float(os.getenv("READ_TIMEOUT_S", "0.5"))
 BASE = float(os.getenv("BACKOFF_BASE_S", "0.1"))
 CAPB = float(os.getenv("BACKOFF_CAP_S", "5"))
+BOOT = float(os.getenv("BOOT_STAGGER_S", "15"))
 LOG = os.getenv("LOG_FILE", "/logs/sc.log")
 
 ready = [False] * N
+ready_lock = threading.Lock()
 red = {"on": False}
-lk = threading.Lock()
-
-
-class NullPointer(Exception):
-    pass
+red_lock = threading.Lock()
 
 
 def log(msg):
-    with lk:
-        with open(LOG, "a") as f:
-            f.write(f"{time.time():.3f} {msg}\n")
+    with open(LOG, "a") as f:
+        f.write(f"{time.time():.3f} {msg}\n")
 
 
 def fetch():
@@ -37,27 +29,48 @@ def fetch():
         return json.loads(r.read())
 
 
+def is_red():
+    with red_lock:
+        return red["on"]
+
+
+def set_red(value):
+    with red_lock:
+        red["on"] = value
+
+
+def set_ready(i, value):
+    with ready_lock:
+        ready[i] = value
+
+
+def count_ready():
+    with ready_lock:
+        return sum(ready)
+
+
+class NullPointer(Exception):
+    pass
+
+
 def check(p):
-    # caminho de codigo novo (cota): sem tratamento de erro e sem feature flag
-    if not red["on"] and p.get("quota") is None:
+    if not is_red() and p.get("quota") is None:
         raise NullPointer()
 
 
 def backoff(attempt):
     if MIT == "jitter":
-        time.sleep(random.uniform(0, min(CAPB, BASE * 2 ** attempt)))  # full jitter
+        time.sleep(random.uniform(0, min(CAPB, BASE * 2 ** attempt)))
     else:
-        time.sleep(0.01)  # retry imediato (so evita girar 100% de CPU)
-
-
-BOOT = float(os.getenv("BOOT_STAGGER_S", "15"))
+        time.sleep(0.01)
 
 
 def task(i):
-    time.sleep(random.uniform(0, BOOT))  # implantacao inicial escalonada
+    time.sleep(random.uniform(0, BOOT))
     while True:
         try:
-            good = attempt = 0
+            good = 0
+            attempt = 0
             while good < WARM:
                 try:
                     check(fetch())
@@ -68,7 +81,7 @@ def task(i):
                 except Exception:
                     attempt += 1
                     backoff(attempt)
-            ready[i] = True
+            set_ready(i, True)
             log(f"event=task_ready task={i}")
             while True:
                 time.sleep(POLL * random.uniform(0.5, 1.5))
@@ -77,17 +90,18 @@ def task(i):
                 except NullPointer:
                     raise
                 except Exception:
-                    pass  # mantem politica em cache
+                    pass
         except NullPointer:
-            ready[i] = False
+            set_ready(i, False)
             log(f"event=task_crash task={i}")
-            time.sleep(random.uniform(0, RESTART * 2) if MIT == "jitter" else RESTART)
+            delay = random.uniform(0, RESTART * 2) if MIT == "jitter" else RESTART
+            time.sleep(delay)
 
 
 def reporter():
     while True:
         time.sleep(1)
-        log(f"ready_count={sum(ready)}")
+        log(f"ready_count={count_ready()}")
 
 
 class H(BaseHTTPRequestHandler):
@@ -108,16 +122,16 @@ class H(BaseHTTPRequestHandler):
         if self.path == "/health":
             return self._send(200, {"ok": True})
         if self.path == "/ready":
-            return self._send(200 if sum(ready) >= N else 503, {"ready": sum(ready)})
+            return self._send(200 if count_ready() >= N else 503, {"ready": count_ready()})
         if self.path == "/api":
-            if any(ready):
+            if count_ready() > 0:
                 return self._send(200, {"ok": True})
             return self._send(503, {"error": "no ready task"})
         self._send(404, {})
 
     def do_POST(self):
         if self.path == "/redbutton":
-            red["on"] = True
+            set_red(True)
             log("event=redbutton")
             return self._send(200, {"ok": True})
         self._send(404, {})
