@@ -1,0 +1,3 @@
+# Scripts shell SEMPRE com LF, inclusive em checkouts no Windows (core.autocrlf=true):
+# com CRLF, ./run.sh falha no bash do WSL/Linux ("bash\r: No such file or directory").
+*.sh text eol=lf
