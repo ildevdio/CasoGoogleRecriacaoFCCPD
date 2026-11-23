@@ -1,0 +1,122 @@
+# Resumo das execucoes (gerado por summarize.py; nao editar a mao)
+# mediana = valor da execucao do meio; fonte = arquivo de onde o numero saiu
+
+== modo none (3 execucoes: none_run1, none_run2, none_run3)
+total_requisicoes: mediana=5940   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=5940; none_run2=5354; none_run3=6480
+erros_antes_da_falha_%: mediana=0.00   [fonte: logs/none_run2/metrics.txt]
+    valores: none_run1=0.00; none_run2=0.00; none_run3=0.00
+tempo_ate_falha_s (poison -> 1o erro): mediana=0.13   [fonte: logs/none_run2/metrics.txt]
+    valores: none_run1=0.28; none_run2=0.13; none_run3=0.11
+tempo_ate_recuperacao_s (red-button -> ultimo erro): mediana=63.49   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=63.49; none_run2=50.14; none_run3=74.13
+tempo_poison_ate_red-button_s: mediana=15.07   [fonte: logs/none_run3/metrics.txt]
+    valores: none_run1=14.89; none_run2=16.85; none_run3=15.07
+razao_recuperacao_sobre_tempo_ate_red-button: mediana=4.26   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=4.26; none_run2=2.98; none_run3=4.92
+erros_janela_fixa_60s_apos_poison_%: mediana=84.97   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=84.97; none_run2=76.87; none_run3=91.17
+erros_apos_red-button_%: mediana=55.60   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=55.60; none_run2=47.66; none_run3=60.25
+erros_entre_poison_e_red-button_%: mediana=92.53   [fonte: logs/none_run3/metrics.txt]
+    valores: none_run1=91.68; none_run2=93.33; none_run3=92.53
+tarefas_prontas_max (antes da falha): mediana=100   [fonte: logs/none_run2/metrics.txt]
+    valores: none_run1=100; none_run2=100; none_run3=100
+tarefas_prontas_no_fim: mediana=100   [fonte: logs/none_run2/metrics.txt]
+    valores: none_run1=100; none_run2=100; none_run3=100
+atingiu_criterio_de_estabilidade: (nao numerico)
+    valores: none_run1=sim; none_run2=sim; none_run3=sim
+tempo_ate_10%_tarefas_prontas_s (red-button -> ready_count): mediana=21.1   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=21.1; none_run2=5.0; none_run3=24.6
+tempo_ate_50%_tarefas_prontas_s (red-button -> ready_count): mediana=52.5   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=52.5; none_run2=36.3; none_run3=64.1
+tempo_ate_90%_tarefas_prontas_s (red-button -> ready_count): mediana=63.6   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=63.6; none_run2=50.4; none_run3=75.2
+pico_fila_no_db_crash_loop: mediana=31   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=31; none_run2=30; none_run3=33
+pico_leituras_rejeitadas_por_s_no_db_crash_loop: mediana=0   [fonte: logs/none_run2/metrics.txt]
+    valores: none_run1=0; none_run2=0; none_run3=0
+pico_fila_no_db_pos_red-button: mediana=388   [fonte: logs/none_run1/metrics.txt]
+    valores: none_run1=388; none_run2=353; none_run3=393
+pico_leituras_rejeitadas_por_s_no_db_pos_red-button: mediana=83   [fonte: logs/none_run3/metrics.txt]
+    valores: none_run1=93; none_run2=67; none_run3=83
+
+== modo exp (3 execucoes: exp_run1, exp_run2, exp_run3)
+total_requisicoes: mediana=4070   [fonte: logs/exp_run1/metrics.txt]
+    valores: exp_run1=4070; exp_run2=4070; exp_run3=4060
+erros_antes_da_falha_%: mediana=0.00   [fonte: logs/exp_run2/metrics.txt]
+    valores: exp_run1=0.00; exp_run2=0.00; exp_run3=0.00
+tempo_ate_falha_s (poison -> 1o erro): mediana=0.33   [fonte: logs/exp_run3/metrics.txt]
+    valores: exp_run1=0.46; exp_run2=0.29; exp_run3=0.33
+tempo_ate_recuperacao_s (red-button -> ultimo erro): mediana=7.99   [fonte: logs/exp_run1/metrics.txt]
+    valores: exp_run1=7.99; exp_run2=8.82; exp_run3=7.66
+tempo_poison_ate_red-button_s: mediana=15.09   [fonte: logs/exp_run2/metrics.txt]
+    valores: exp_run1=14.94; exp_run2=15.09; exp_run3=15.10
+razao_recuperacao_sobre_tempo_ate_red-button: mediana=0.53   [fonte: logs/exp_run1/metrics.txt]
+    valores: exp_run1=0.53; exp_run2=0.58; exp_run3=0.51
+erros_janela_fixa_60s_apos_poison_%: mediana=33.04   [fonte: logs/exp_run3/metrics.txt]
+    valores: exp_run1=32.50; exp_run2=34.57; exp_run3=33.04
+erros_apos_red-button_%: mediana=12.91   [fonte: logs/exp_run3/metrics.txt]
+    valores: exp_run1=12.29; exp_run2=14.86; exp_run3=12.91
+erros_entre_poison_e_red-button_%: mediana=92.13   [fonte: logs/exp_run3/metrics.txt]
+    valores: exp_run1=92.13; exp_run2=92.29; exp_run3=92.13
+tarefas_prontas_max (antes da falha): mediana=100   [fonte: logs/exp_run2/metrics.txt]
+    valores: exp_run1=100; exp_run2=100; exp_run3=100
+tarefas_prontas_no_fim: mediana=100   [fonte: logs/exp_run2/metrics.txt]
+    valores: exp_run1=100; exp_run2=100; exp_run3=100
+atingiu_criterio_de_estabilidade: (nao numerico)
+    valores: exp_run1=sim; exp_run2=sim; exp_run3=sim
+tempo_ate_10%_tarefas_prontas_s (red-button -> ready_count): mediana=3.7   [fonte: logs/exp_run2/metrics.txt]
+    valores: exp_run1=3.9; exp_run2=3.7; exp_run3=3.5
+tempo_ate_50%_tarefas_prontas_s (red-button -> ready_count): mediana=7.6   [fonte: logs/exp_run3/metrics.txt]
+    valores: exp_run1=7.0; exp_run2=7.7; exp_run3=7.6
+tempo_ate_90%_tarefas_prontas_s (red-button -> ready_count): mediana=8.6   [fonte: logs/exp_run3/metrics.txt]
+    valores: exp_run1=8.0; exp_run2=8.7; exp_run3=8.6
+pico_fila_no_db_crash_loop: mediana=0   [fonte: logs/exp_run2/metrics.txt]
+    valores: exp_run1=0; exp_run2=0; exp_run3=0
+pico_leituras_rejeitadas_por_s_no_db_crash_loop: mediana=0   [fonte: logs/exp_run2/metrics.txt]
+    valores: exp_run1=0; exp_run2=0; exp_run3=0
+pico_fila_no_db_pos_red-button: mediana=59   [fonte: logs/exp_run3/metrics.txt]
+    valores: exp_run1=55; exp_run2=62; exp_run3=59
+pico_leituras_rejeitadas_por_s_no_db_pos_red-button: mediana=0   [fonte: logs/exp_run2/metrics.txt]
+    valores: exp_run1=0; exp_run2=0; exp_run3=0
+
+== modo jitter (3 execucoes: jitter_run1, jitter_run2, jitter_run3)
+total_requisicoes: mediana=4060   [fonte: logs/jitter_run1/metrics.txt]
+    valores: jitter_run1=4060; jitter_run2=4054; jitter_run3=4070
+erros_antes_da_falha_%: mediana=0.00   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=0.00; jitter_run2=0.00; jitter_run3=0.00
+tempo_ate_falha_s (poison -> 1o erro): mediana=0.47   [fonte: logs/jitter_run1/metrics.txt]
+    valores: jitter_run1=0.47; jitter_run2=0.52; jitter_run3=0.20
+tempo_ate_recuperacao_s (red-button -> ultimo erro): mediana=4.59   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=5.04; jitter_run2=4.59; jitter_run3=3.57
+tempo_poison_ate_red-button_s: mediana=15.00   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=15.08; jitter_run2=15.00; jitter_run3=14.86
+razao_recuperacao_sobre_tempo_ate_red-button: mediana=0.31   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=0.33; jitter_run2=0.31; jitter_run3=0.24
+erros_janela_fixa_60s_apos_poison_%: mediana=27.43   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=27.13; jitter_run2=27.43; jitter_run3=27.44
+erros_apos_red-button_%: mediana=5.49   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=5.52; jitter_run2=5.49; jitter_run3=5.41
+erros_entre_poison_e_red-button_%: mediana=92.67   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=91.60; jitter_run2=92.67; jitter_run3=93.43
+tarefas_prontas_max (antes da falha): mediana=100   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=100; jitter_run2=100; jitter_run3=100
+tarefas_prontas_no_fim: mediana=100   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=100; jitter_run2=100; jitter_run3=100
+atingiu_criterio_de_estabilidade: (nao numerico)
+    valores: jitter_run1=sim; jitter_run2=sim; jitter_run3=sim
+tempo_ate_10%_tarefas_prontas_s (red-button -> ready_count): mediana=1.2   [fonte: logs/jitter_run1/metrics.txt]
+    valores: jitter_run1=1.2; jitter_run2=0.9; jitter_run3=1.2
+tempo_ate_50%_tarefas_prontas_s (red-button -> ready_count): mediana=3.2   [fonte: logs/jitter_run3/metrics.txt]
+    valores: jitter_run1=3.2; jitter_run2=3.9; jitter_run3=3.2
+tempo_ate_90%_tarefas_prontas_s (red-button -> ready_count): mediana=4.9   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=4.2; jitter_run2=4.9; jitter_run3=5.3
+pico_fila_no_db_crash_loop: mediana=2   [fonte: logs/jitter_run3/metrics.txt]
+    valores: jitter_run1=4; jitter_run2=0; jitter_run3=2
+pico_leituras_rejeitadas_por_s_no_db_crash_loop: mediana=0   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=0; jitter_run2=0; jitter_run3=0
+pico_fila_no_db_pos_red-button: mediana=26   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=27; jitter_run2=26; jitter_run3=25
+pico_leituras_rejeitadas_por_s_no_db_pos_red-button: mediana=0   [fonte: logs/jitter_run2/metrics.txt]
+    valores: jitter_run1=0; jitter_run2=0; jitter_run3=0

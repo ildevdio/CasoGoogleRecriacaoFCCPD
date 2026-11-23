@@ -48,6 +48,9 @@ services:
       POISON_AT_S: ${POISON_AT_S:-20}
       REDBUTTON_AT_S: ${REDBUTTON_AT_S:-35}
       MAX_S: ${MAX_S:-240}
+      STABLE_S: ${STABLE_S:-20}
+      READY_FRAC: ${READY_FRAC:-0.9}
+      WINDOW_S: ${WINDOW_S:-60}
       SC_URL: http://service-control:8080
       DB_URL: http://policy-db:8000
     networks: [backend, frontend]

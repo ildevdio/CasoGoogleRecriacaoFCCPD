@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv
+import os
 import re
 import sys
 
@@ -8,6 +9,9 @@ if len(sys.argv) != 2:
     sys.exit(2)
 
 d = sys.argv[1]
+# Janela fixa para a % de erro do incidente: [poison, poison + WINDOW_S].
+# Fixa para que os modos sejam comparados sobre o mesmo intervalo de tempo.
+WINDOW_S = float(os.getenv("WINDOW_S", "60"))
 
 
 def read_events(path):
@@ -90,14 +94,21 @@ def main():
                 say(out, "tempo_ate_recuperacao_s (red-button -> ultimo erro)",
                     f">{rec:.1f} (NAO recuperou ate o fim da execucao)" if censored else f"{rec:.2f}",
                     "client.csv + client_events.log")
+                # Proporcao comparavel com o caso real: quanto tempo a recuperacao
+                # levou em relacao ao tempo ate o red-button (real: ~40 min).
+                say(out, "tempo_poison_ate_red-button_s", f"{tr - tp:.2f}", "client_events.log")
+                say(out, "razao_recuperacao_sobre_tempo_ate_red-button",
+                    "N/A (nao recuperou)" if censored else f"{rec / (tr - tp):.2f}",
+                    "client.csv + client_events.log")
         else:
             say(out, "tempo_ate_recuperacao_s", "N/A (red-button nao pressionado)", "client_events.log")
 
-        last_err_overall = errs_after_poison[-1][0] if errs_after_poison else tp
-        win = [s for t, s, _ in rows if tp <= t <= last_err_overall]
-        say(out, "erros_na_janela_de_incidente_%",
-            f"{100 * sum(s != 200 for s in win) / max(1, len(win)):.2f}" if win else "0.00",
-            "client.csv")
+        win = [s for t, s, _ in rows if tp <= t <= tp + WINDOW_S]
+        covered = rows and rows[-1][0] >= tp + WINDOW_S
+        val = f"{100 * sum(s != 200 for s in win) / max(1, len(win)):.2f}" if win else "0.00"
+        if not covered:
+            val += " (execucao terminou antes do fim da janela)"
+        say(out, f"erros_janela_fixa_{int(WINDOW_S)}s_apos_poison_%", val, "client.csv")
 
         if tr is not None:
             post = [s for t, s, _ in rows if t >= tr]
@@ -124,6 +135,9 @@ def main():
 
     n = max((c for _, c in rc), default=0)
     say(out, "tarefas_prontas_max (antes da falha)", n, "sc.log")
+    say(out, "tarefas_prontas_no_fim", rc[-1][1] if rc else "N/A", "sc.log")
+    say(out, "atingiu_criterio_de_estabilidade",
+        "sim" if "stable_reached" in ev else "nao (parou pelo teto MAX_S)", "client_events.log")
 
     if tr is not None and rc:
         for frac in (0.1, 0.5, 0.9):
@@ -136,22 +150,27 @@ def main():
                 say(out, f"tempo_ate_{int(frac * 100)}%_tarefas_prontas_s (red-button -> ready_count)",
                     "nao atingiu ate o fim", "sc.log")
 
-    rej = []
-    wt = []
+    # Carga no banco separada por fase do incidente:
+    #   crash_loop = [poison, red-button)   pos_red-button = [red-button, fim]
+    phases = {"crash_loop": {"rej": 0, "wt": 0}, "pos_red-button": {"rej": 0, "wt": 0}}
     try:
         with open(f"{d}/db.log") as f:
             for line in f:
-                m = re.search(r"rej=(\d+)", line)
-                if m:
-                    rej.append(int(m.group(1)))
-                m = re.search(r"waiting=(\d+)", line)
-                if m:
-                    wt.append(int(m.group(1)))
+                m = re.match(r"(\d+\.\d+) ok=\d+ rej=(\d+) waiting=(\d+)", line)
+                if not m or tp is None:
+                    continue
+                t, r, w = float(m.group(1)), int(m.group(2)), int(m.group(3))
+                if t < tp:
+                    continue
+                ph = "crash_loop" if tr is None or t < tr else "pos_red-button"
+                phases[ph]["rej"] = max(phases[ph]["rej"], r)
+                phases[ph]["wt"] = max(phases[ph]["wt"], w)
     except FileNotFoundError:
         pass
 
-    say(out, "pico_leituras_rejeitadas_por_s_no_db", max(rej) if rej else 0, "db.log")
-    say(out, "pico_fila_no_db", max(wt) if wt else 0, "db.log")
+    for ph, v in phases.items():
+        say(out, f"pico_fila_no_db_{ph}", v["wt"], "db.log")
+        say(out, f"pico_leituras_rejeitadas_por_s_no_db_{ph}", v["rej"], "db.log")
 
     with open(f"{d}/metrics.txt", "w") as f:
         f.write("\n".join(out) + "\n")

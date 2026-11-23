@@ -1,4 +1,4 @@
-import os, threading, time, urllib.request, urllib.error
+import json, os, threading, time, urllib.request, urllib.error
 
 SC = os.getenv("SC_URL", "http://service-control:8080")
 DB = os.getenv("DB_URL", "http://policy-db:8000")
@@ -7,13 +7,30 @@ WORKERS = int(os.getenv("WORKERS", "10"))
 POISON_AT = float(os.getenv("POISON_AT_S", "20"))
 RED_AT = float(os.getenv("REDBUTTON_AT_S", "35"))
 STABLE = float(os.getenv("STABLE_S", "20"))
+READY_FRAC = float(os.getenv("READY_FRAC", "0.9"))
 MAX_S = float(os.getenv("MAX_S", "240"))
+# A execucao so termina depois de cobrir a janela fixa de erro do
+# analyze.py (poison + WINDOW_S), com 1 s de folga.
+WINDOW = float(os.getenv("WINDOW_S", "60"))
 OUT = os.getenv("OUT_DIR", "/logs")
 
 rows = []
 lk = threading.Lock()
-last_err = {"t": 0.0}
 stop = threading.Event()
+
+
+def ready_status():
+    """Le {"ready": x, "n": N} de /ready (responde 503 enquanto x < N)."""
+    try:
+        r = urllib.request.urlopen(SC + "/ready", timeout=1)
+    except urllib.error.HTTPError as e:
+        r = e
+    except Exception:
+        return None
+    try:
+        return json.loads(r.read())
+    except Exception:
+        return None
 
 
 def wait(url, timeout=1):
@@ -43,8 +60,6 @@ def worker():
         lat = (time.time() - t) * 1000
         with lk:
             rows.append((t, code, lat))
-            if code != 200:
-                last_err["t"] = t
         time.sleep(max(0, period - (time.time() - t)))
 
 
@@ -79,6 +94,7 @@ if __name__ == "__main__":
 
     poisoned = False
     red = False
+    stable_since = None
     while time.time() - t0 < MAX_S:
         time.sleep(0.25)
         el = time.time() - t0
@@ -93,9 +109,19 @@ if __name__ == "__main__":
             ev["redbutton_pressed"] = time.time()
             red = True
 
-        if red and time.time() - max(last_err["t"], ev["redbutton_pressed"]) >= STABLE:
-            ev["stable_reached"] = time.time()
-            break
+        # Criterio de parada: pelo menos READY_FRAC das tarefas prontas,
+        # sem interrupcao, por STABLE segundos (MAX_S e o teto da execucao).
+        if red:
+            st = ready_status()
+            if st and st["ready"] >= READY_FRAC * st["n"]:
+                if stable_since is None:
+                    stable_since = time.time()
+                elif (time.time() - stable_since >= STABLE
+                      and time.time() >= ev["poison_injected"] + WINDOW + 1):
+                    ev["stable_reached"] = time.time()
+                    break
+            else:
+                stable_since = None
 
         if int(el * 4) % 20 == 0:
             flush(ev)

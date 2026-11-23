@@ -1,0 +1,18 @@
+# Parte D - teste do PUT parcial no APIManuali
+# data: 2026-11-23T18:09:36-03:00  commit APIManuali: b6ae124  node: v24.19.0
+# trecho testado: src/routes/products.js:38-53 (schema) + src/services/ProductService.js:49-67 (atualizar)
+
+$ POST /api/products (produto com categoria, descricao e historia)
+{"id":1,"nome":"Vaso de barro","descricao":"Feito a mao","preco":50,"estoque":5,"ativo":true,"categoria":"Ceramica","fotos":[],"historia":"Tradicao familiar"}
+
+$ GET /api/products?categoria=Ceramica (antes)
+[{"id":1,"nome":"Vaso de barro","descricao":"Feito a mao","preco":50,"estoque":5,"ativo":true,"categoria":"Ceramica","fotos":[],"historia":"Tradicao familiar"}]
+
+$ PUT /api/products/1 so com os campos obrigatorios (nome, preco, estoque, ativo)
+{"id":1,"nome":"Vaso de barro","descricao":" ","preco":55,"estoque":5,"ativo":true,"categoria":"","fotos":[],"historia":""}
+
+$ GET /api/products?categoria=Ceramica (depois)
+[]
+
+$ PUT /api/products/1 sem o campo obrigatorio nome (defesa existente)
+{"erro":"Erro de validação.","details":[{"campo":"nome","mensagem":"nome é obrigatório.","origem":"body"}]}

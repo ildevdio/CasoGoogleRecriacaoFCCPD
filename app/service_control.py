@@ -51,11 +51,6 @@ def count_ready():
         return sum(ready)
 
 
-def list_ready():
-    with ready_lock:
-        return [i for i, v in enumerate(ready) if v]
-
-
 def inc_crash(i):
     with crash_lock:
         crash_count[i] += 1
@@ -81,19 +76,31 @@ def check(p):
         raise NullPointer()
 
 
-def backoff(attempt):
+# Modos (variavel MITIGATION):
+#   none   -> sem backoff: retry quase imediato e reinicio com RESTART fixo (como no incidente)
+#   exp    -> backoff exponencial SEM jitter (todas as tarefas esperam o mesmo tempo)
+#   jitter -> backoff exponencial COM jitter ("full jitter": uniforme entre 0 e o teto)
+def wait_time(base, n):
+    """Tempo de espera para a n-esima falha consecutiva, conforme o modo."""
+    if MIT == "none":
+        return base
+    ceiling = min(CAPB, base * (2 ** n))
     if MIT == "jitter":
-        time.sleep(random.uniform(0, min(CAPB, BASE * 2 ** attempt)))
-    else:
+        return random.uniform(0, ceiling)
+    return ceiling
+
+
+def backoff(attempt):
+    """Espera entre leituras falhas do banco durante o warmup."""
+    if MIT == "none":
         time.sleep(0.01)
+    else:
+        time.sleep(wait_time(BASE, attempt))
 
 
 def restart_delay(i):
-    """Backoff exponencial por tarefa no reinicio apos crash."""
-    c = get_crash(i)
-    if MIT == "jitter":
-        return random.uniform(0, min(CAPB, RESTART * (2 ** c)))
-    return min(CAPB, RESTART * (2 ** c))
+    """Espera antes de reiniciar uma tarefa apos crash."""
+    return wait_time(RESTART, get_crash(i))
 
 
 def task(i):
@@ -155,12 +162,17 @@ class H(BaseHTTPRequestHandler):
         if self.path == "/health":
             return self._send(200, {"ok": True})
         if self.path == "/ready":
-            return self._send(200 if count_ready() >= N else 503, {"ready": count_ready()})
+            c = count_ready()
+            return self._send(200 if c >= N else 503, {"ready": c, "n": N})
         if self.path == "/api":
-            r = list_ready()
-            if not r:
-                return self._send(503, {"error": "no ready task"})
-            chosen = random.choice(r)
+            # Cada requisicao cai numa das N tarefas (como um balanceador).
+            # Se a tarefa sorteada nao estiver pronta, a requisicao falha:
+            # assim a % de erro mede a capacidade perdida, nao so "alguma tarefa viva".
+            chosen = random.randrange(N)
+            with ready_lock:
+                ok = ready[chosen]
+            if not ok:
+                return self._send(503, {"error": "task not ready", "task": chosen})
             return self._send(200, {"ok": True, "task": chosen})
         self._send(404, {})
 
